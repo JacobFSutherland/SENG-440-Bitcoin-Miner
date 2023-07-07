@@ -49,6 +49,7 @@ void sha256_pad(const char* input, size_t size, uint8_t** output,
     (*output)[*output_size - 1 - i] = (size_bits >> (i * 8)) & 0xff;
 
   return;
+  
 }
 
 // precondition: input_len is a multiple of 64
