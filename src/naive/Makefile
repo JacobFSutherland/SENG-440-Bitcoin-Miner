@@ -3,7 +3,7 @@ CFLAGS = -Wall -Wextra -Wpedantic
 
 .PHONY: all clean debug release
 
-all: release
+all: debug
 
 clean:
 	rm -f main

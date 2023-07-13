@@ -1,8 +1,11 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #define SHA256_HASH_LEN (256 / 8)
+#define SHA256_BLOCK_LEN 64
 
 const uint32_t kPrimes[64] = {
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,  //
@@ -22,38 +25,64 @@ const uint32_t kPrimes[64] = {
     0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,  //
     0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
 
-void sha256_pad(const char* input, size_t size, uint8_t** output,
-                size_t* output_size) {
-  // - append 1 bit to message
-  // - append 0 bits until message length is 448 bits mod 512
-  // - append 64 bits representing original message length
-  // - return padded message
+// char* sha256_pad(const char* input, size_t size, size_t* output_size) {
+//   // - append 1 bit to message
+//   // - append 0 bits until message length is 448 bits mod 512
+//   // - append 64 bits representing original message length
+//   // - return padded message
 
-  // Calculate total size: message size + 1 bit + additional zero bits + 64 bits
-  // for length
-  size_t bit_size = size * 8;
-  size_t padded_bit_size = ((bit_size + 1 + 512) & ~(512 - 1)) + 64;
-  *output_size = padded_bit_size / 8;
-  *output = (uint8_t*)calloc(*output_size, sizeof(uint8_t));
+//   // Calculate total size: message size + 1 bit + additional zero bits + 64
+//   bits
+//   // for length
+//   size_t bit_size = size * 8;
+//   size_t padded_bit_size = ((bit_size + 1 + 512) & ~(512 - 1)) + 64;
+//   *output_size = padded_bit_size / 8;
+//   *output = (uint8_t*)calloc(*output_size, sizeof(uint8_t));
 
-  // Original message copy
-  memcpy(*output, input, size);
+//   // Original message copy
+//   memcpy(*output, input, size);
 
-  // Append 1 bit
-  (*output)[size] = 0b10000000;
+//   // Append 1 bit
+//   (*output)[size] = 0b10000000;
 
-  // Append original message length in bits. Assuming the message is shorter
-  // than 2^32 bits as we can't handle larger messages
-  uint64_t size_bits = size * 8;
-  for (int i = 0; i < 8; i++)
-    (*output)[*output_size - 1 - i] = (size_bits >> (i * 8)) & 0xff;
+//   // Append original message length in bits. Assuming the message is shorter
+//   // than 2^32 bits as we can't handle larger messages
+//   uint64_t size_bits = size * 8;
+//   for (int i = 0; i < 8; i++)
+//     (*output)[*output_size - 1 - i] = (size_bits >> (i * 8)) & 0xff;
 
-  return;
-  
-}
+//   return;
+// }
+
+#define WRITE32BE(P, V)                        \
+  ((P)[0] = (0x00000000FF000000 & (V)) >> 030, \
+   (P)[1] = (0x0000000000FF0000 & (V)) >> 020, \
+   (P)[2] = (0x000000000000FF00 & (V)) >> 010, \
+   (P)[3] = (0x00000000000000FF & (V)) >> 000)
+
+#define WRITE64BE(P, V)                        \
+  ((P)[0] = (0xFF00000000000000 & (V)) >> 070, \
+   (P)[1] = (0x00FF000000000000 & (V)) >> 060, \
+   (P)[2] = (0x0000FF0000000000 & (V)) >> 050, \
+   (P)[3] = (0x000000FF00000000 & (V)) >> 040, \
+   (P)[4] = (0x00000000FF000000 & (V)) >> 030, \
+   (P)[5] = (0x0000000000FF0000 & (V)) >> 020, \
+   (P)[6] = (0x000000000000FF00 & (V)) >> 010, \
+   (P)[7] = (0x00000000000000FF & (V)) >> 000)
+
+#define ROTR32(x, n) (((x) >> (n)) | ((x) << (32 - (n))))
+
+#define MAJORITY(a, b, c) (((a) & (b)) ^ ((a) & (c)) ^ ((b) & (c)))
+#define CHOOSE(a, b, c) (((a) & (b)) ^ (~(a) & (c)))
+
+#define EXPAND0(x) (ROTR32(x, 7) ^ ROTR32(x, 18) ^ ((x) >> 3))
+#define EXPAND1(x) (ROTR32(x, 17) ^ ROTR32(x, 19) ^ ((x) >> 10))
+
+#define HASH0(x) (ROTR32(x, 2) ^ ROTR32(x, 13) ^ ROTR32(x, 22))
+#define HASH1(x) (ROTR32(x, 6) ^ ROTR32(x, 11) ^ ROTR32(x, 25))
 
 // precondition: input_len is a multiple of 64
-void sha256(char* input, size_t input_len, char* output) {
+void sha256(const char* input, size_t input_len, char* output) {
   // - for each block
   //   - copy block into message schedule (64 32-bit words)
   //   - extend message schedule
@@ -64,14 +93,24 @@ void sha256(char* input, size_t input_len, char* output) {
   // - add hash value to result
   // sha256_pad(&input, &input_len);
 
-  uint32_t a;
-  uint32_t b;
-  uint32_t c;
-  uint32_t d;
-  uint32_t e;
-  uint32_t f;
-  uint32_t g;
-  uint32_t h;
+  uint32_t* H = (uint32_t*)output;
+
+  // WRITE32BE(H + 0, 0x6a09e667);
+  // WRITE32BE(H + 1, 0xbb67ae85);
+  // WRITE32BE(H + 2, 0x3c6ef372);
+  // WRITE32BE(H + 3, 0xa54ff53a);
+  // WRITE32BE(H + 4, 0x510e527f);
+  // WRITE32BE(H + 5, 0x9b05688c);
+  // WRITE32BE(H + 6, 0x1f83d9ab);
+  // WRITE32BE(H + 7, 0x5be0cd19);
+  H[0] = 0x6a09e667;
+  H[1] = 0xbb67ae85;
+  H[2] = 0x3c6ef372;
+  H[3] = 0xa54ff53a;
+  H[4] = 0x510e527f;
+  H[5] = 0x9b05688c;
+  H[6] = 0x1f83d9ab;
+  H[7] = 0x5be0cd19;
 
   uint32_t w[64];
 
@@ -85,17 +124,87 @@ void sha256(char* input, size_t input_len, char* output) {
 
   for (size_t block = 0; block < block_count; block++) {
     //   - copy block into message schedule (64 32-bit words)
-    //   - extend message schedule
+    if (block == block_count - 1) {
+      // last block
+      // - append 1 bit to message
+      // - append 0 bits until message length is 448 bits mod 512
+      // - append 64 bits representing original message length
+
+      for (int i = 0; i < 16; i++) {
+        w[i] = 0;
+      }
+
+      // copy message bytes
+      size_t block_len = input_len % 64;
+      size_t offset = 0;
+      for (; offset < block_len; offset++) {
+        w[offset / 4] |=
+            ((input[block * 64 + offset] & 0xFF) << (8 * (3 - (offset % 4))));
+      }
+      // append 1 bit
+      w[offset / 4] |= (0x80 & 0xFF) << (8 * (3 - (offset % 4)));
+      offset += 1;
+      // pad with zeros
+      for (; offset < 64 - MESSAGE_FOOTER_LEN; offset++) {
+        w[offset / 4] |= (0u & 0xFF) << (8 * (3 - (offset % 4)));
+      };
+      //  append message length
+      uint64_t total_len = input_len * 8;
+      w[14] = (total_len & 0xFFFFFFFF00000000) >> 32;
+      w[15] = (total_len & 0x00000000FFFFFFFF) >> 0;
+    } else {
+      // FIXME, needs padding and stuff
+      for (size_t i = 0; i < 64; i++) {
+        w[i / 4] |= ((input[block * 64 + i] & 0xFF) << (8 * (3 - (i % 4))));
+      }
+      // memcpy(w, input + block * 64, 64);
+    }
+
+    // expand message schedule
+    for (int i = 16; i < 64; i++) {
+      w[i] = EXPAND1(w[i - 2]) + w[i - 7] + EXPAND0(w[i - 15]) + w[i - 16];
+    }
+
+    // BELOW HERE IS WRONG?
+
+    // hash block
+    uint32_t a = H[0];
+    uint32_t b = H[1];
+    uint32_t c = H[2];
+    uint32_t d = H[3];
+    uint32_t e = H[4];
+    uint32_t f = H[5];
+    uint32_t g = H[6];
+    uint32_t h = H[7];
+
+    uint32_t t1 = 0;
+    uint32_t t2 = 0;
+    for (int i = 0; i < 64; i++) {
+      t1 = h + HASH1(e) + CHOOSE(e, f, g) + kPrimes[i] + w[i];
+      t2 = HASH0(a) + MAJORITY(a, b, c);
+      h = g;
+      g = f;
+      f = e;
+      e = d + t1;
+      d = c;
+      c = b;
+      b = a;
+      a = t1 + t2;
+    }
+    H[0] += a;
+    H[1] += b;
+    H[2] += c;
+    H[3] += d;
+    H[4] += e;
+    H[5] += f;
+    H[6] += g;
+    H[7] += h;
   }
 
-  ((uint32_t*)output)[0] = a;
-  ((uint32_t*)output)[1] = b;
-  ((uint32_t*)output)[2] = c;
-  ((uint32_t*)output)[3] = d;
-  ((uint32_t*)output)[4] = e;
-  ((uint32_t*)output)[5] = f;
-  ((uint32_t*)output)[6] = g;
-  ((uint32_t*)output)[7] = h;
+  for (int i = 0; i < 8; i++) {
+    int v = H[i];
+    WRITE32BE((char*)(H + i), v);
+  }
 
   return;
 }
@@ -110,21 +219,21 @@ int is_valid_block(char* hash, int difficulty) {
   return 1;
 }
 
-// attempty to mine a block
-// returns 1 if block is mined successfully
-int mine_block(char* prev_block_hash, size_t prev_block_len, uint32_t nonce,
-               int difficulty) {
-  char input[SHA256_HASH_LEN + sizeof(uint32_t)];
-  char output[SHA256_HASH_LEN];
+// // attempty to mine a block
+// // returns 1 if block is mined successfully
+// int mine_block(char* prev_block_hash, size_t prev_block_len, uint32_t nonce,
+//                int difficulty) {
+//   char input[SHA256_HASH_LEN + sizeof(uint32_t)];
+//   char output[SHA256_HASH_LEN];
 
-  memcpy(input, prev_block_hash, SHA256_HASH_LEN);
-  *((uint32_t*)(input + SHA256_HASH_LEN)) = nonce;
+//   memcpy(input, prev_block_hash, SHA256_HASH_LEN);
+//   *((uint32_t*)(input + SHA256_HASH_LEN)) = nonce;
 
-  sha256(input, sizeof(memcpy), output);
+//   sha256(input, sizeof(memcpy), output);
 
-  int success = is_valid_block(output, difficulty);
-  return success;
-}
+//   int success = is_valid_block(output, difficulty);
+//   return success;
+// }
 
 int main(int argc, char** argv) {
   if (argc < 2) {
@@ -140,6 +249,14 @@ int main(int argc, char** argv) {
     return 1;
   }
   char output[SHA256_HASH_LEN];
-  printf("Hello, bitcoin!\n");
+  // const char* s = "";
+  // const char* s = "hello, bitcoin!";
+  // const char* s = "bitconnect is the best exchange ever I love bitconnect!";
+  // // 1 block
+  const char* s =
+      "bitconnect is the best exchange ever I love bitconnect!!";  // 2 blocks
+  sha256(s, strlen(s), output);
+  write(1, output, SHA256_HASH_LEN);
+
   return 0;
 }
