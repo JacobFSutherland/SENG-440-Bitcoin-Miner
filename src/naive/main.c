@@ -125,6 +125,11 @@ void sha256(const char* input, size_t input_len, char* output) {
   for (size_t block = 0; block < block_count; block++) {
     //   - copy block into message schedule (64 32-bit words)
     if (block == block_count - 1) {
+      // TODO consider the case where the last block more than 55 bytes but less
+      // than 64 in that case, we need to pad the remainder of the block with
+      // the one and zeroes, and add a second block with all zeroes and the
+      // header.
+
       // last block
       // - append 1 bit to message
       // - append 0 bits until message length is 448 bits mod 512
@@ -142,7 +147,7 @@ void sha256(const char* input, size_t input_len, char* output) {
             ((input[block * 64 + offset] & 0xFF) << (8 * (3 - (offset % 4))));
       }
       // append 1 bit
-      w[offset / 4] |= (0x80 & 0xFF) << (8 * (3 - (offset % 4)));
+      w[offset / 4] |= (0x80u & 0xFF) << (8 * (3 - (offset % 4)));
       offset += 1;
       // pad with zeros
       for (; offset < 64 - MESSAGE_FOOTER_LEN; offset++) {
@@ -236,10 +241,11 @@ int is_valid_block(char* hash, int difficulty) {
 // }
 
 int main(int argc, char** argv) {
-  if (argc < 2) {
+  if (argc < 3) {
     printf(
-        "Usage: %s <difficulty>\n"
-        "  difficulty: number of leading zeros in the hash\n",
+        "Usage: %s <difficulty> <input>\n"
+        "  difficulty: number of leading zeros in the hash\n"
+        "  input: the genesis block\n",  // pass straight to sha256 for testing
         argv[0]);
     return 1;
   }
@@ -249,12 +255,9 @@ int main(int argc, char** argv) {
     return 1;
   }
   char output[SHA256_HASH_LEN];
-  // const char* s = "";
-  // const char* s = "hello, bitcoin!";
-  // const char* s = "bitconnect is the best exchange ever I love bitconnect!";
-  // // 1 block
-  const char* s =
-      "bitconnect is the best exchange ever I love bitconnect!!";  // 2 blocks
+  char* s = argv[2];
+  // fprintf(stderr, "input='%s'\n", s);
+  // fprintf(stderr, "len=%ld\n", strlen(s));
   sha256(s, strlen(s), output);
   write(1, output, SHA256_HASH_LEN);
 
