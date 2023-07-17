@@ -37,16 +37,6 @@ const uint32_t kPrimes[64] = {
    (P)[2] = (0x000000000000FF00 & (V)) >> 010, \
    (P)[3] = (0x00000000000000FF & (V)) >> 000)
 
-#define WRITE64BE(P, V)                        \
-  ((P)[0] = (0xFF00000000000000 & (V)) >> 070, \
-   (P)[1] = (0x00FF000000000000 & (V)) >> 060, \
-   (P)[2] = (0x0000FF0000000000 & (V)) >> 050, \
-   (P)[3] = (0x000000FF00000000 & (V)) >> 040, \
-   (P)[4] = (0x00000000FF000000 & (V)) >> 030, \
-   (P)[5] = (0x0000000000FF0000 & (V)) >> 020, \
-   (P)[6] = (0x000000000000FF00 & (V)) >> 010, \
-   (P)[7] = (0x00000000000000FF & (V)) >> 000)
-
 #define ROTR32(x, n) (((x) >> (n)) | ((x) << (32 - (n))))
 
 #define MAJORITY(a, b, c) (((a) & (b)) ^ ((a) & (c)) ^ ((b) & (c)))
@@ -58,20 +48,10 @@ const uint32_t kPrimes[64] = {
 #define HASH0(x) (ROTR32(x, 2) ^ ROTR32(x, 13) ^ ROTR32(x, 22))
 #define HASH1(x) (ROTR32(x, 6) ^ ROTR32(x, 11) ^ ROTR32(x, 25))
 
-// precondition: input_len is a multiple of 64
-void sha256(const char* input, size_t input_len, char* output) {
-  // - for each block
-  //   - copy block into message schedule (64 32-bit words)
-  //   - extend message schedule
-  //   - initialize working variables
-  //   - for each round
-  //     - compute working variables
-  // - compute hash value
-  // - add hash value to result
-  // sha256_pad(&input, &input_len);
-
+void sha256(const uint8_t* input, size_t input_len, uint8_t* output) {
   uint32_t w[64];
 
+  // reinterpret output bytes as 32-bit words
   uint32_t* H = (uint32_t*)output;
   H[0] = 0x6a09e667;
   H[1] = 0xbb67ae85;
@@ -83,20 +63,18 @@ void sha256(const char* input, size_t input_len, char* output) {
   H[7] = 0x5be0cd19;
 
   size_t block_count = CEILDIV(input_len + 1 + MESSAGE_FOOTER_LEN, 64);
+#ifdef DEBUG
   fprintf(stderr, "block_count: %zu\n", block_count);
   fprintf(stderr, "input_len: %zu\n", input_len);
-
-  // - on new data:
-  // add it to block
-  // if block is full:
-  //   - copy block into message schedule
+#endif
 
   for (size_t block = 0; block < block_count; block++) {
-    //   - copy block into message schedule (64 32-bit words)
+    // copy block into message schedule (16 32-bit words)
     size_t end_of_block = (block + 1) * 64;
+#ifdef DEBUG
     fprintf(stderr, "end of block %zu: %zu\n", block, (block + 1) * 64);
+#endif
     if (end_of_block < input_len) {
-      // fprintf(stderr, "end of block %zu: %zu\n", block, (block + 1) * 64);
       for (int i = 0; i < 16; i++) {
         w[i] = ((input[block * 64 + i * 4 + 0] & 0xFF) << 24) |
                ((input[block * 64 + i * 4 + 1] & 0xFF) << 16) |
@@ -108,7 +86,9 @@ void sha256(const char* input, size_t input_len, char* output) {
         w[i] = 0;
       }
       size_t input_bytes = block * 64 > input_len ? 0 : input_len - block * 64;
+#ifdef DEBUG
       fprintf(stderr, "input_bytes: %zu\n", input_bytes);
+#endif
 
       if (input_bytes != 0) {
         // copy message bytes
@@ -129,6 +109,7 @@ void sha256(const char* input, size_t input_len, char* output) {
         w[15] = (total_len & 0x00000000FFFFFFFF) >> 0;
       }
     }
+#ifdef DEBUG
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define BYTE_TO_BINARY(byte)                                \
   ((byte)&0x80 ? '1' : '0'), ((byte)&0x40 ? '1' : '0'),     \
@@ -143,15 +124,14 @@ void sha256(const char* input, size_t input_len, char* output) {
       }
       fprintf(stderr, "\n");
     }
+#endif
 
-    // expand message schedule
+    // expand message schedule into 64 32-bit words
     for (int i = 16; i < 64; i++) {
       w[i] = EXPAND1(w[i - 2]) + w[i - 7] + EXPAND0(w[i - 15]) + w[i - 16];
     }
 
-    // BELOW HERE IS WRONG?
-
-    // hash block
+    // hash message schedule
     uint32_t a = H[0];
     uint32_t b = H[1];
     uint32_t c = H[2];
@@ -175,6 +155,8 @@ void sha256(const char* input, size_t input_len, char* output) {
       b = a;
       a = t1 + t2;
     }
+
+    // update hash state
     H[0] += a;
     H[1] += b;
     H[2] += c;
@@ -185,16 +167,17 @@ void sha256(const char* input, size_t input_len, char* output) {
     H[7] += h;
   }
 
+  // output is always big endian
   for (int i = 0; i < 8; i++) {
     int v = H[i];
-    WRITE32BE((char*)(H + i), v);
+    WRITE32BE((uint8_t*)(H + i), v);
   }
 
   return;
 }
 
 // check leading zeroes in hash against difficulty
-int is_valid_block(char* hash, int difficulty) {
+int is_valid_block(uint8_t* hash, int difficulty) {
   for (int i = 0; i < difficulty; i++) {
     if (hash[i / 8] & (1 << (7 - (i % 8)))) {
       return 0;
@@ -202,22 +185,6 @@ int is_valid_block(char* hash, int difficulty) {
   }
   return 1;
 }
-
-// // attempty to mine a block
-// // returns 1 if block is mined successfully
-// int mine_block(char* prev_block_hash, size_t prev_block_len, uint32_t nonce,
-//                int difficulty) {
-//   char input[SHA256_HASH_LEN + sizeof(uint32_t)];
-//   char output[SHA256_HASH_LEN];
-
-//   memcpy(input, prev_block_hash, SHA256_HASH_LEN);
-//   *((uint32_t*)(input + SHA256_HASH_LEN)) = nonce;
-
-//   sha256(input, sizeof(memcpy), output);
-
-//   int success = is_valid_block(output, difficulty);
-//   return success;
-// }
 
 int main(int argc, char** argv) {
   if (argc < 3) {
@@ -233,11 +200,13 @@ int main(int argc, char** argv) {
     printf("Difficulty must be between 0 and 256\n");
     return 1;
   }
-  char output[SHA256_HASH_LEN];
+  uint8_t output[SHA256_HASH_LEN];
   char* s = argv[2];
-  // fprintf(stderr, "input='%s'\n", s);
-  // fprintf(stderr, "len=%ld\n", strlen(s));
-  sha256(s, strlen(s), output);
+#ifdef DEBUG
+  fprintf(stderr, "input='%s'\n", s);
+  fprintf(stderr, "len=%ld\n", strlen(s));
+#endif
+  sha256((uint8_t*)s, strlen(s), output);
   write(1, output, SHA256_HASH_LEN);
 
   return 0;
