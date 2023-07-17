@@ -13,6 +13,7 @@ clean:
 debug: CFLAGS += -g3 -fsanitize=address -fsanitize=undefined
 debug: $(TARGETS)
 
+release: CFLAGS += -O3 -march=native
 release: $(TARGETS)
 
 main: main.c
