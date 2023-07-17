@@ -1,17 +1,19 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -Wpedantic
 
+TARGETS = main sha256_test sha256_benchmark
+
 .PHONY: all clean debug release
 
 all: debug
 
 clean:
-	rm -f main *_test
+	rm -f main *_test *_benchmark
 
 debug: CFLAGS += -g3 -fsanitize=address -fsanitize=undefined
-debug: main sha256_test
+debug: $(TARGETS)
 
-release: main sha256_test
+release: $(TARGETS)
 
 main: main.c
 	$(CC) $(CFLAGS) -o main main.c
