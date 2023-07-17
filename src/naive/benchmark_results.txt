@@ -1,0 +1,51 @@
+# last updated Sun 16 Jul 19:58:03 PDT 2023 on commit 7b168154a930ac902e64d6a46d469db13a67eaa2
+
+seng440@SENG440Pi:~/SENG-440-Bitcoin-Miner/src/naive $ hyperfine './sha256_benchmark 1 500000' './sha256_benchmark 16 500000' './sha256_benchmark 17
+ 500000' './sha256_benchmark 55 500000' './sha256_benchmark 56 500000' './sha256_benchmark 63 500000' './sha256_benchmark 64 500000' './sha256_bench
+mark 65 500000' './sha256_benchmark 999 500000'
+Benchmark 1: ./sha256_benchmark 1 500000
+  Time (mean ± σ):      1.449 s ±  0.004 s    [User: 1.441 s, System: 0.003 s]
+  Range (min … max):    1.443 s …  1.455 s    10 runs
+ 
+Benchmark 2: ./sha256_benchmark 16 500000
+  Time (mean ± σ):      1.549 s ±  0.004 s    [User: 1.544 s, System: 0.001 s]
+  Range (min … max):    1.541 s …  1.557 s    10 runs
+ 
+Benchmark 3: ./sha256_benchmark 17 500000
+  Time (mean ± σ):      1.558 s ±  0.003 s    [User: 1.553 s, System: 0.002 s]
+  Range (min … max):    1.552 s …  1.562 s    10 runs
+ 
+Benchmark 4: ./sha256_benchmark 55 500000
+  Time (mean ± σ):      1.756 s ±  0.011 s    [User: 1.752 s, System: 0.001 s]
+  Range (min … max):    1.748 s …  1.785 s    10 runs
+ 
+Benchmark 5: ./sha256_benchmark 56 500000
+  Time (mean ± σ):      3.205 s ±  0.008 s    [User: 3.187 s, System: 0.002 s]
+  Range (min … max):    3.193 s …  3.218 s    10 runs
+ 
+Benchmark 6: ./sha256_benchmark 63 500000
+  Time (mean ± σ):      3.243 s ±  0.010 s    [User: 3.228 s, System: 0.003 s]
+  Range (min … max):    3.232 s …  3.268 s    10 runs
+ 
+Benchmark 7: ./sha256_benchmark 64 500000
+  Time (mean ± σ):      3.264 s ±  0.012 s    [User: 3.251 s, System: 0.001 s]
+  Range (min … max):    3.251 s …  3.279 s    10 runs
+ 
+Benchmark 8: ./sha256_benchmark 65 500000
+  Time (mean ± σ):      2.908 s ±  0.010 s    [User: 2.899 s, System: 0.002 s]
+  Range (min … max):    2.899 s …  2.933 s    10 runs
+ 
+Benchmark 9: ./sha256_benchmark 999 500000
+  Time (mean ± σ):     23.350 s ±  0.025 s    [User: 23.314 s, System: 0.004 s]
+  Range (min … max):   23.306 s … 23.391 s    10 runs
+ 
+Summary
+  ./sha256_benchmark 1 500000 ran
+    1.07 ± 0.00 times faster than ./sha256_benchmark 16 500000
+    1.08 ± 0.00 times faster than ./sha256_benchmark 17 500000
+    1.21 ± 0.01 times faster than ./sha256_benchmark 55 500000
+    2.01 ± 0.01 times faster than ./sha256_benchmark 65 500000
+    2.21 ± 0.01 times faster than ./sha256_benchmark 56 500000
+    2.24 ± 0.01 times faster than ./sha256_benchmark 63 500000
+    2.25 ± 0.01 times faster than ./sha256_benchmark 64 500000
+   16.12 ± 0.04 times faster than ./sha256_benchmark 999 500000
