@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,6 +7,9 @@
 
 #define SHA256_HASH_LEN (256 / 8)
 #define SHA256_BLOCK_LEN 64
+#define MESSAGE_FOOTER_LEN (64 / 8)
+
+#define BLOCK_MAX_LEN (SHA256_BLOCK_LEN - MESSAGE_FOOTER_LEN - 1)
 
 const uint32_t kPrimes[64] = {
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,  //
@@ -25,34 +29,7 @@ const uint32_t kPrimes[64] = {
     0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,  //
     0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
 
-// char* sha256_pad(const char* input, size_t size, size_t* output_size) {
-//   // - append 1 bit to message
-//   // - append 0 bits until message length is 448 bits mod 512
-//   // - append 64 bits representing original message length
-//   // - return padded message
-
-//   // Calculate total size: message size + 1 bit + additional zero bits + 64
-//   bits
-//   // for length
-//   size_t bit_size = size * 8;
-//   size_t padded_bit_size = ((bit_size + 1 + 512) & ~(512 - 1)) + 64;
-//   *output_size = padded_bit_size / 8;
-//   *output = (uint8_t*)calloc(*output_size, sizeof(uint8_t));
-
-//   // Original message copy
-//   memcpy(*output, input, size);
-
-//   // Append 1 bit
-//   (*output)[size] = 0b10000000;
-
-//   // Append original message length in bits. Assuming the message is shorter
-//   // than 2^32 bits as we can't handle larger messages
-//   uint64_t size_bits = size * 8;
-//   for (int i = 0; i < 8; i++)
-//     (*output)[*output_size - 1 - i] = (size_bits >> (i * 8)) & 0xff;
-
-//   return;
-// }
+#define CEILDIV(a, b) (((a) + (b)-1) / (b))
 
 #define WRITE32BE(P, V)                        \
   ((P)[0] = (0x00000000FF000000 & (V)) >> 030, \
@@ -93,16 +70,9 @@ void sha256(const char* input, size_t input_len, char* output) {
   // - add hash value to result
   // sha256_pad(&input, &input_len);
 
-  uint32_t* H = (uint32_t*)output;
+  uint32_t w[64];
 
-  // WRITE32BE(H + 0, 0x6a09e667);
-  // WRITE32BE(H + 1, 0xbb67ae85);
-  // WRITE32BE(H + 2, 0x3c6ef372);
-  // WRITE32BE(H + 3, 0xa54ff53a);
-  // WRITE32BE(H + 4, 0x510e527f);
-  // WRITE32BE(H + 5, 0x9b05688c);
-  // WRITE32BE(H + 6, 0x1f83d9ab);
-  // WRITE32BE(H + 7, 0x5be0cd19);
+  uint32_t* H = (uint32_t*)output;
   H[0] = 0x6a09e667;
   H[1] = 0xbb67ae85;
   H[2] = 0x3c6ef372;
@@ -112,57 +82,66 @@ void sha256(const char* input, size_t input_len, char* output) {
   H[6] = 0x1f83d9ab;
   H[7] = 0x5be0cd19;
 
-  uint32_t w[64];
-
-#define MESSAGE_FOOTER_LEN (64 / 8)
-
-// this but ceil instead of floor
-// size_t block_count = (input_len + 1 + MESSAGE_FOOTER_LEN) / 64;
-#define CEILDIV(a, b) (((a) + (b)-1) / (b))
   size_t block_count = CEILDIV(input_len + 1 + MESSAGE_FOOTER_LEN, 64);
-#undef CEILDIV
+  fprintf(stderr, "block_count: %zu\n", block_count);
+  fprintf(stderr, "input_len: %zu\n", input_len);
+
+  // - on new data:
+  // add it to block
+  // if block is full:
+  //   - copy block into message schedule
 
   for (size_t block = 0; block < block_count; block++) {
     //   - copy block into message schedule (64 32-bit words)
-    if (block == block_count - 1) {
-      // TODO consider the case where the last block more than 55 bytes but less
-      // than 64 in that case, we need to pad the remainder of the block with
-      // the one and zeroes, and add a second block with all zeroes and the
-      // header.
-
-      // last block
-      // - append 1 bit to message
-      // - append 0 bits until message length is 448 bits mod 512
-      // - append 64 bits representing original message length
-
+    size_t end_of_block = (block + 1) * 64;
+    fprintf(stderr, "end of block %zu: %zu\n", block, (block + 1) * 64);
+    if (end_of_block < input_len) {
+      // fprintf(stderr, "end of block %zu: %zu\n", block, (block + 1) * 64);
+      for (int i = 0; i < 16; i++) {
+        w[i] = ((input[block * 64 + i * 4 + 0] & 0xFF) << 24) |
+               ((input[block * 64 + i * 4 + 1] & 0xFF) << 16) |
+               ((input[block * 64 + i * 4 + 2] & 0xFF) << 8) |
+               ((input[block * 64 + i * 4 + 3] & 0xFF) << 0);
+      }
+    } else {
       for (int i = 0; i < 16; i++) {
         w[i] = 0;
       }
+      size_t input_bytes = block * 64 > input_len ? 0 : input_len - block * 64;
+      fprintf(stderr, "input_bytes: %zu\n", input_bytes);
 
-      // copy message bytes
-      size_t block_len = input_len % 64;
-      size_t offset = 0;
-      for (; offset < block_len; offset++) {
-        w[offset / 4] |=
-            ((input[block * 64 + offset] & 0xFF) << (8 * (3 - (offset % 4))));
+      if (input_bytes != 0) {
+        // copy message bytes
+        for (size_t i = 0; i < input_bytes; i++) {
+          w[i / 4] |= (input[block * 64 + i] & 0xFF) << (8 * (3 - (i % 4)));
+        }
+        // append 1 bit
+        w[input_bytes / 4] |= (0x80u & 0xFF) << (8 * (3 - (input_bytes % 4)));
+      } else if (input_len % 64 == 0 && block == block_count - 1) {
+        // append 1 bit
+        w[0] |= (0x80u & 0xFF) << (8 * (3 - (input_bytes % 4)));
       }
-      // append 1 bit
-      w[offset / 4] |= (0x80u & 0xFF) << (8 * (3 - (offset % 4)));
-      offset += 1;
-      // pad with zeros
-      for (; offset < 64 - MESSAGE_FOOTER_LEN; offset++) {
-        w[offset / 4] |= (0u & 0xFF) << (8 * (3 - (offset % 4)));
-      };
-      //  append message length
-      uint64_t total_len = input_len * 8;
-      w[14] = (total_len & 0xFFFFFFFF00000000) >> 32;
-      w[15] = (total_len & 0x00000000FFFFFFFF) >> 0;
-    } else {
-      // FIXME, needs padding and stuff
-      for (size_t i = 0; i < 64; i++) {
-        w[i / 4] |= ((input[block * 64 + i] & 0xFF) << (8 * (3 - (i % 4))));
+
+      if (block == block_count - 1) {
+        //  append message length
+        uint64_t total_len = input_len * 8;
+        w[14] = (total_len & 0xFFFFFFFF00000000) >> 32;
+        w[15] = (total_len & 0x00000000FFFFFFFF) >> 0;
       }
-      // memcpy(w, input + block * 64, 64);
+    }
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)                                \
+  ((byte)&0x80 ? '1' : '0'), ((byte)&0x40 ? '1' : '0'),     \
+      ((byte)&0x20 ? '1' : '0'), ((byte)&0x10 ? '1' : '0'), \
+      ((byte)&0x08 ? '1' : '0'), ((byte)&0x04 ? '1' : '0'), \
+      ((byte)&0x02 ? '1' : '0'), ((byte)&0x01 ? '1' : '0')
+
+    for (int i = 0; i < 16; i++) {
+      for (int j = 0; j < 4; j++) {
+        fprintf(stderr, BYTE_TO_BINARY_PATTERN " ",
+                BYTE_TO_BINARY(w[i] >> (8 * (3 - j))));
+      }
+      fprintf(stderr, "\n");
     }
 
     // expand message schedule
