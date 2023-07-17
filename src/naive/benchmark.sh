@@ -6,5 +6,5 @@
   "./sha256_benchmark 56 $1"\
   "./sha256_benchmark 63 $1"\
   "./sha256_benchmark 64 $1"\
-  "./sha256_bench mark 65 $1"\
+  "./sha256_benchmark 65 $1"\
   "./sha256_benchmark 999 $1"\
