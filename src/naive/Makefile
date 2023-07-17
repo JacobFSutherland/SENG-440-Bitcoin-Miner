@@ -6,13 +6,16 @@ CFLAGS = -Wall -Wextra -Wpedantic
 all: debug
 
 clean:
-	rm -f main
+	rm -f main *_test
 
 debug: CFLAGS += -g3 -fsanitize=address -fsanitize=undefined
-debug: main 
+debug: main sha256_test
 
-release: main
+release: main sha256_test
 
 main: main.c
 	$(CC) $(CFLAGS) -o main main.c
+
+sha256_test: sha256_test.c
+	$(CC) $(CFLAGS) -o sha256_test sha256_test.c
 
