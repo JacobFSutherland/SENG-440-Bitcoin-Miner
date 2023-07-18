@@ -5,6 +5,7 @@
 #include <stdio.h>
 #endif
 
+#define NONCE_LEN (32)
 #define SHA256_HASH_LEN (256 / 8)
 #define SHA256_BLOCK_LEN 64
 #define MESSAGE_FOOTER_LEN (64 / 8)

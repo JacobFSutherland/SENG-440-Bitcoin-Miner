@@ -18,11 +18,12 @@ int is_valid_block(uint8_t* hash, int difficulty) {
 }
 
 int main(int argc, char** argv) {
-  if (argc < 3) {
+  if (argc < 4) {
     printf(
-        "Usage: %s <difficulty> <input>\n"
+        "Usage: %s <difficulty> <input> <iterations>\n"
         "  difficulty: number of leading zeros in the hash\n"
         "  input: the genesis block\n",  // pass straight to sha256 for testing
+        "  iterations: the number of blocks you want to solve\n",
         argv[0]);
     return 1;
   }
@@ -36,8 +37,27 @@ int main(int argc, char** argv) {
 #ifdef DEBUG
   fprintf(stderr, "input='%s'\n", s);
   fprintf(stderr, "len=%ld\n", strlen(s));
+
 #endif
-  sha256((uint8_t*)s, strlen(s), output);
+
+  int iterations = atoi(argv[3]);
+  int blocks = 0;
+  uint8_t currBlock[SHA256_HASH_LEN + NONCE_LEN];
+  memcpy(currBlock, s, SHA256_HASH_LEN);
+  memset(currBlock + SHA256_HASH_LEN, 0, NONCE_LEN);  // Initialize nonce to 0
+
+  while(blocks < iterations) {
+    sha256((uint8_t*)currBlock, strlen(s) + NONCE_LEN, output);
+    if(is_valid_block(output, difficulty)) {
+      //Print or do something with the block here
+      memcpy(currBlock, output, SHA256_HASH_LEN);  // Copy hash to current block for next computation
+      memset(currBlock + SHA256_HASH_LEN, 0, NONCE_LEN);  // Reset nonce to 0
+      
+      blocks++;
+    }
+    (*(uint32_t*)(currBlock + SHA256_HASH_LEN))++;  // Increment nonce
+  }
+
   write(1, output, SHA256_HASH_LEN);
 
   return 0;
