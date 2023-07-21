@@ -38,11 +38,11 @@ function run() {
   echo ok
 }
 
-run empty "" e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-run letter a ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb
-run short 'hello, bitcoin!' 805626ab387601ac3e380fce945c09e04dbe96c4c493d43fd2e5876647b8064f
-run full_block 'bitconnect is the best exchange ever I love bitconnect!' bfcb0f73b7b17d4b8bd1c46f640d4d91afc8d930cd4e525619482d05e497a6fd
-run one_past_block 'bitconnect is the best exchange ever I love bitconnect!!' 6520eb721bb8351bca128544aa3240d36985e267e8fd8a24189ad17afa7ad284
-run fill_first_block 'the quick brown fox jumped over the lazy dog. i love most dogs!' 90d1632dc6d031f28e30e734cd610394cf8497d0d1358cc5bdabb0cd92cc86b4
-run overflow_first_block 'the quick brown fox jumped over the lazy dog. i love most dogs!!' 29bb3dabe9330dd6cc319c3187a43f0d800a45ae973e958b9d81e3b6a9bea802
-run lorem_ipsum 'Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industrys standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.' 1f5d66dc8af2587ac74e50eae32957087290a2414245bbf2c190ff488b0c114f
+run empty "" e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 5000
+run letter a ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb 5000
+run short 'hello, bitcoin!' 805626ab387601ac3e380fce945c09e04dbe96c4c493d43fd2e5876647b8064f 5000
+run full_block 'bitconnect is the best exchange ever I love bitconnect!' bfcb0f73b7b17d4b8bd1c46f640d4d91afc8d930cd4e525619482d05e497a6fd 5000
+run one_past_block 'bitconnect is the best exchange ever I love bitconnect!!' 6520eb721bb8351bca128544aa3240d36985e267e8fd8a24189ad17afa7ad284 5000
+run fill_first_block 'the quick brown fox jumped over the lazy dog. i love most dogs!' 90d1632dc6d031f28e30e734cd610394cf8497d0d1358cc5bdabb0cd92cc86b4 5000
+run overflow_first_block 'the quick brown fox jumped over the lazy dog. i love most dogs!!' 29bb3dabe9330dd6cc319c3187a43f0d800a45ae973e958b9d81e3b6a9bea802 5000
+run lorem_ipsum 'Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industrys standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.' 1f5d66dc8af2587ac74e50eae32957087290a2414245bbf2c190ff488b0c114f 5000
