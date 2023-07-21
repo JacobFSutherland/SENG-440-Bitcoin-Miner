@@ -15,6 +15,9 @@ debug: $(TARGETS)
 
 release: $(TARGETS)
 
+release-opt: CFLAGS += -O3 -march=native
+release: $(TARGETS)
+
 main: main.c
 	$(CC) $(CFLAGS) -o main main.c
 
