@@ -32,22 +32,36 @@ const uint32_t kPrimes[64] = {
 
 #define CEILDIV(a, b) (((a) + (b)-1) / (b))
 
-#define WRITE32BE(P, V)                        \
-  ((P)[0] = (0x00000000FF000000 & (V)) >> 030, \
-   (P)[1] = (0x0000000000FF0000 & (V)) >> 020, \
-   (P)[2] = (0x000000000000FF00 & (V)) >> 010, \
-   (P)[3] = (0x00000000000000FF & (V)) >> 000)
+void write32be(uint8_t* p, uint32_t v) {
+  p[0] = (0x00000000FF000000 & (v)) >> 030;
+  p[1] = (0x0000000000FF0000 & (v)) >> 020;
+  p[2] = (0x000000000000FF00 & (v)) >> 010;
+  p[3] = (0x00000000000000FF & (v)) >> 000;
+}
 
-#define ROTR32(x, n) (((x) >> (n)) | ((x) << (32 - (n))))
+uint32_t rotr32(uint32_t x, uint32_t n) { return (x >> n) | (x << (32 - n)); }
 
-#define MAJORITY(a, b, c) (((a) & (b)) ^ ((a) & (c)) ^ ((b) & (c)))
-#define CHOOSE(a, b, c) (((a) & (b)) ^ (~(a) & (c)))
+uint32_t majority(uint32_t a, uint32_t b, uint32_t c) {
+  return (a & b) ^ (a & c) ^ (b & c);
+}
 
-#define EXPAND0(x) (ROTR32(x, 7) ^ ROTR32(x, 18) ^ ((x) >> 3))
-#define EXPAND1(x) (ROTR32(x, 17) ^ ROTR32(x, 19) ^ ((x) >> 10))
+uint32_t choose(uint32_t a, uint32_t b, uint32_t c) {
+  return (a & b) ^ (~a & c);
+}
 
-#define HASH0(x) (ROTR32(x, 2) ^ ROTR32(x, 13) ^ ROTR32(x, 22))
-#define HASH1(x) (ROTR32(x, 6) ^ ROTR32(x, 11) ^ ROTR32(x, 25))
+uint32_t expand0(uint32_t x) { return rotr32(x, 7) ^ rotr32(x, 18) ^ (x >> 3); }
+
+uint32_t expand1(uint32_t x) {
+  return rotr32(x, 17) ^ rotr32(x, 19) ^ (x >> 10);
+}
+
+uint32_t hash0(uint32_t x) {
+  return rotr32(x, 2) ^ rotr32(x, 13) ^ rotr32(x, 22);
+}
+
+uint32_t hash1(uint32_t x) {
+  return rotr32(x, 6) ^ rotr32(x, 11) ^ rotr32(x, 25);
+}
 
 void sha256(const uint8_t* input, size_t input_len, uint8_t* output) {
   uint32_t w[64];
@@ -133,7 +147,7 @@ void sha256(const uint8_t* input, size_t input_len, uint8_t* output) {
 
     // expand message schedule into 64 32-bit words
     for (int i = 16; i < 64; i++) {
-      w[i] = EXPAND1(w[i - 2]) + w[i - 7] + EXPAND0(w[i - 15]) + w[i - 16];
+      w[i] = expand1(w[i - 2]) + w[i - 7] + expand0(w[i - 15]) + w[i - 16];
     }
 
     // hash message schedule
@@ -149,8 +163,8 @@ void sha256(const uint8_t* input, size_t input_len, uint8_t* output) {
     uint32_t t1 = 0;
     uint32_t t2 = 0;
     for (int i = 0; i < 64; i++) {
-      t1 = h + HASH1(e) + CHOOSE(e, f, g) + kPrimes[i] + w[i];
-      t2 = HASH0(a) + MAJORITY(a, b, c);
+      t1 = h + hash1(e) + choose(e, f, g) + kPrimes[i] + w[i];
+      t2 = hash0(a) + majority(a, b, c);
       h = g;
       g = f;
       f = e;
@@ -175,7 +189,7 @@ void sha256(const uint8_t* input, size_t input_len, uint8_t* output) {
   // output is always big endian
   for (int i = 0; i < 8; i++) {
     int v = H[i];
-    WRITE32BE((uint8_t*)(H + i), v);
+    write32be((uint8_t*)(H + i), v);
   }
 
   return;
