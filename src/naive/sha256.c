@@ -94,7 +94,7 @@ void sha256(const uint8_t* input, size_t input_len, uint8_t* output) {
       if (input_bytes != 0) {
         // copy message bytes
         for (size_t i = 0; i < input_bytes; i++) {
-          w[i / 4] |= (input[block * 64 + i] & 0xFF) << (8 * (3 - (i % 4)));
+          w[i / 4] |= (input[block * 64 + i] & 0xFFu) << (8 * (3 - (i % 4)));
         }
         // append 1 bit
         w[input_bytes / 4] |= (0x80u & 0xFF) << (8 * (3 - (input_bytes % 4)));

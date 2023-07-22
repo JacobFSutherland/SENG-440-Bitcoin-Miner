@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Wpedantic
+CFLAGS = -Wall -Wextra -Wpedantic -g3
 
 TARGETS = main sha256_test sha256_benchmark
 
@@ -10,13 +10,13 @@ all: debug
 clean:
 	rm -f main *_test *_benchmark
 
-debug: CFLAGS += -g3 -fsanitize=address -fsanitize=undefined
+debug: CFLAGS += -fsanitize=address -fsanitize=undefined
 debug: $(TARGETS)
 
 release: $(TARGETS)
 
 release-opt: CFLAGS += -O3 -march=native
-release: $(TARGETS)
+release-opt: $(TARGETS)
 
 main: main.c
 	$(CC) $(CFLAGS) -o main main.c

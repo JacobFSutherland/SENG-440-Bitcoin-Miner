@@ -76,7 +76,7 @@ int main(int argc, char** argv) {
 
   while (blocks < iterations) {
     uint8_t output[SHA256_HASH_LEN];
-    sha256((uint8_t*)&currBlock, strlen(s) + NONCE_LEN, output);
+    sha256((uint8_t*)&currBlock, sizeof(currBlock), output);
     if (is_valid_block(output, difficulty)) {
       /* real bitcoin network things would go here */
       // Copy hash to current block for next computation
@@ -92,6 +92,8 @@ int main(int argc, char** argv) {
   for (int i = 0; i < iterations; i++) {
     printf("%08x\n", nonces[i]);
   }
+
+  free(nonces);
 
   return 0;
 }
