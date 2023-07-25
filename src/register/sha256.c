@@ -129,23 +129,25 @@ void sha256(const uint8_t* input, size_t input_len, uint8_t* output) {
 #endif
 
     // expand message schedule into 64 32-bit words
-    for (int i = 16; i < 64; i++) {
-      w[i] = expand1(w[i - 2]) + w[i - 7] + expand0(w[i - 15]) + w[i - 16];
+    for (register int i = 16; i < 64; i++) {
+      register uint32_t w2 = w[i - 2];
+      register uint32_t w15 = w[i - 15];
+      w[i] = expand1(w2) + w[i - 7] + expand0(w15) + w[i - 16];
     }
 
     // hash message schedule
-    uint32_t a = H[0];
-    uint32_t b = H[1];
-    uint32_t c = H[2];
-    uint32_t d = H[3];
-    uint32_t e = H[4];
-    uint32_t f = H[5];
-    uint32_t g = H[6];
-    uint32_t h = H[7];
+    register uint32_t a = H[0];
+    register uint32_t b = H[1];
+    register uint32_t c = H[2];
+    register uint32_t d = H[3];
+    register uint32_t e = H[4];
+    register uint32_t f = H[5];
+    register uint32_t g = H[6];
+    register uint32_t h = H[7];
 
-    uint32_t t1 = 0;
-    uint32_t t2 = 0;
-    for (int i = 0; i < 64; i++) {
+    register uint32_t t1 = 0;
+    register uint32_t t2 = 0;
+    for (register int i = 0; i < 64; i++) {
       t1 = h + hash1(e) + choose(e, f, g) + kPrimes[i] + w[i];
       t2 = hash0(a) + majority(a, b, c);
       h = g;
