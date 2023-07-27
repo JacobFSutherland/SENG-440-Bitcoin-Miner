@@ -72,8 +72,6 @@ int main(int argc, char** argv) {
 
   uint32_t* nonces = malloc(iterations * sizeof(uint32_t));
 
-  memcpy(currBlock.prev_hash, s, SHA256_HASH_LEN);
-
   while (blocks < iterations) {
     uint8_t output[SHA256_HASH_LEN];
     sha256((uint8_t*)&currBlock, sizeof(currBlock), output);
