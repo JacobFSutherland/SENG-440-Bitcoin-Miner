@@ -56,10 +56,9 @@ void sha256(const uint8_t* input, size_t input_len, uint8_t* output) {
     fprintf(stderr, "end of block %zu: %zu\n", block, (block + 1) * 64);
 #endif
     for (int i = 0; i < 16; i++) {
-      w[i] = ((input[block * 64 + i * 4 + 0] & 0xFF) << 24) |
-             ((input[block * 64 + i * 4 + 1] & 0xFF) << 16) |
-             ((input[block * 64 + i * 4 + 2] & 0xFF) << 8) |
-             ((input[block * 64 + i * 4 + 3] & 0xFF) << 0);
+      register uint32_t v = ((uint32_t*)input)[(block * 16) + i];
+      asm("rev32 %[v], %[v]" : [v] "+r"(v));
+      w[i] = v;
     }
 
 #ifdef DEBUG
@@ -132,8 +131,9 @@ void sha256(const uint8_t* input, size_t input_len, uint8_t* output) {
 
   // output is always big endian
   for (int i = 0; i < 8; i++) {
-    int v = H[i];
-    write32be((uint8_t*)(H + i), v);
+    register int v = H[i];
+    asm("rev32 %[v], %[v]" : [v] "+r"(v));
+    H[i] = v;
   }
 
   return;
