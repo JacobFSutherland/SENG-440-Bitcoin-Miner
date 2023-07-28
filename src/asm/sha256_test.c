@@ -14,7 +14,7 @@ int main(int argc, char** argv) {
 #endif
   size_t len;
   uint8_t* input = sha256_alloc_padded((uint8_t*)s, strlen(s), &len);
-  sha256(input, strlen(s), output);
+  sha256(input, len, output);
   // raw bytes, not hex
   write(1, output, SHA256_HASH_LEN);
   return 0;
