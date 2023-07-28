@@ -12,7 +12,9 @@ int main(int argc, char** argv) {
   fprintf(stderr, "input='%s'\n", s);
   fprintf(stderr, "len=%ld\n", strlen(s));
 #endif
-  sha256((uint8_t*)s, strlen(s), output);
+  size_t len;
+  uint8_t* input = sha256_alloc_padded((uint8_t*)s, strlen(s), &len);
+  sha256(input, strlen(s), output);
   // raw bytes, not hex
   write(1, output, SHA256_HASH_LEN);
   return 0;

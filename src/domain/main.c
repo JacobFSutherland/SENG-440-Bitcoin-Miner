@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
     return 1;
   }
   char* s = argv[2];
-  struct block currBlock = {0};
+  struct block startingBlock = {0};
   if (strlen(s) != SHA256_HASH_LEN * 2) {
     printf("Input must be a hash of length %d bytes\n", SHA256_HASH_LEN);
     return 1;
@@ -57,9 +57,9 @@ int main(int argc, char** argv) {
       return 1;
     }
     if (i % 2 == 0) {
-      currBlock.prev_hash[i / 2] = x << 4;
+      startingBlock.prev_hash[i / 2] = x << 4;
     } else {
-      currBlock.prev_hash[i / 2] |= x;
+      startingBlock.prev_hash[i / 2] |= x;
     }
   }
 #ifdef DEBUG
@@ -70,21 +70,24 @@ int main(int argc, char** argv) {
   int iterations = atoi(argv[3]);
   int blocks = 0;
 
+  size_t len;
+  struct block* currBlock = sha256_alloc_padded((uint8_t*)&startingBlock,
+                                                sizeof(startingBlock), &len);
   uint32_t* nonces = malloc(iterations * sizeof(uint32_t));
 
   while (blocks < iterations) {
     uint8_t output[SHA256_HASH_LEN];
-    sha256((uint8_t*)&currBlock, sizeof(currBlock), output);
+    sha256((uint8_t*)currBlock, len, output);
     if (is_valid_block(output, difficulty)) {
       /* real bitcoin network things would go here */
       // Copy hash to current block for next computation
-      memcpy(currBlock.prev_hash, output, SHA256_HASH_LEN);
-      nonces[blocks] = currBlock.nonce;
-      currBlock.nonce = 0;
+      memcpy(currBlock->prev_hash, output, SHA256_HASH_LEN);
+      nonces[blocks] = currBlock->nonce;
+      currBlock->nonce = 0;
       blocks++;
       continue;
     }
-    currBlock.nonce += 1;
+    currBlock->nonce += 1;
   }
 
   for (int i = 0; i < iterations; i++) {

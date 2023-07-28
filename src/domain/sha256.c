@@ -1,5 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 #ifdef DEBUG
 #include <stdio.h>
@@ -42,7 +44,7 @@ void sha256(const uint8_t* input, size_t input_len, uint8_t* output) {
   H[6] = 0x1f83d9ab;
   H[7] = 0x5be0cd19;
 
-  size_t block_count = CEILDIV(input_len + 1 + MESSAGE_FOOTER_LEN, 64);
+  size_t block_count = CEILDIV(input_len, 64);
 #ifdef DEBUG
   fprintf(stderr, "block_count: %zu\n", block_count);
   fprintf(stderr, "input_len: %zu\n", input_len);
@@ -50,44 +52,14 @@ void sha256(const uint8_t* input, size_t input_len, uint8_t* output) {
 
   for (size_t block = 0; block < block_count; block++) {
     // copy block into message schedule (16 32-bit words)
-    size_t end_of_block = (block + 1) * 64;
 #ifdef DEBUG
     fprintf(stderr, "end of block %zu: %zu\n", block, (block + 1) * 64);
 #endif
-    if (end_of_block < input_len) {
-      for (int i = 0; i < 16; i++) {
-        w[i] = ((input[block * 64 + i * 4 + 0] & 0xFF) << 24) |
-               ((input[block * 64 + i * 4 + 1] & 0xFF) << 16) |
-               ((input[block * 64 + i * 4 + 2] & 0xFF) << 8) |
-               ((input[block * 64 + i * 4 + 3] & 0xFF) << 0);
-      }
-    } else {
-      for (int i = 0; i < 16; i++) {
-        w[i] = 0;
-      }
-      size_t input_bytes = block * 64 > input_len ? 0 : input_len - block * 64;
-#ifdef DEBUG
-      fprintf(stderr, "input_bytes: %zu\n", input_bytes);
-#endif
-
-      if (input_bytes != 0) {
-        // copy message bytes
-        for (size_t i = 0; i < input_bytes; i++) {
-          w[i / 4] |= (input[block * 64 + i] & 0xFFu) << (8 * (3 - (i % 4)));
-        }
-        // append 1 bit
-        w[input_bytes / 4] |= (0x80u & 0xFF) << (8 * (3 - (input_bytes % 4)));
-      } else if (input_len % 64 == 0 && block == block_count - 1) {
-        // append 1 bit
-        w[0] |= (0x80u & 0xFF) << (8 * (3 - (input_bytes % 4)));
-      }
-
-      if (block == block_count - 1) {
-        //  append message length
-        uint64_t total_len = input_len * 8;
-        w[14] = (total_len & 0xFFFFFFFF00000000) >> 32;
-        w[15] = (total_len & 0x00000000FFFFFFFF) >> 0;
-      }
+    for (int i = 0; i < 16; i++) {
+      w[i] = ((input[block * 64 + i * 4 + 0] & 0xFF) << 24) |
+             ((input[block * 64 + i * 4 + 1] & 0xFF) << 16) |
+             ((input[block * 64 + i * 4 + 2] & 0xFF) << 8) |
+             ((input[block * 64 + i * 4 + 3] & 0xFF) << 0);
     }
 
 #ifdef DEBUG
@@ -165,4 +137,21 @@ void sha256(const uint8_t* input, size_t input_len, uint8_t* output) {
   }
 
   return;
+}
+
+void* sha256_alloc_padded(uint8_t* input, size_t input_len,
+                          size_t* padded_len) {
+  size_t block_count = CEILDIV(input_len + 1 + MESSAGE_FOOTER_LEN, 64);
+  *padded_len = block_count * 64;
+  uint8_t* padded = malloc(*padded_len);
+  memcpy(padded, input, input_len);
+  padded[input_len] = 0x80;
+  // pad with zeros
+  memset(padded + input_len + 1, 0, *padded_len - input_len - 1);
+  // add footer
+  size_t total_len = input_len * 8;
+  for (int i = 0; i < MESSAGE_FOOTER_LEN; i++) {
+    padded[*padded_len - MESSAGE_FOOTER_LEN + i] = (total_len >> (8 * (7 - i)));
+  }
+  return padded;
 }
