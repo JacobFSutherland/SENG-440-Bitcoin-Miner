@@ -3,7 +3,7 @@ CFLAGS = -Wall -Wextra -Wpedantic -g3
 
 TARGETS = main sha256_test sha256_benchmark
 
-.PHONY: all clean debug release
+.PHONY: all clean debug release codegen
 
 all: debug
 
@@ -18,11 +18,11 @@ release: $(TARGETS)
 release-opt: CFLAGS += -O3 -march=native
 release-opt: $(TARGETS)
 
-main: main.c sha256.c codegen.c
+main: main.c sha256.c codegen
 	$(CC) $(CFLAGS) -o main main.c
 
-sha256_test: sha256_test.c sha256.c codegen.c
+sha256_test: sha256_test.c sha256.c codegen
 	$(CC) $(CFLAGS) -o sha256_test sha256_test.c
 
-codegen.c: codegen.py
-	python3 codegen.py > codegen.c
+codegen: codegen.py
+	python3 codegen.py

@@ -1,3 +1,4 @@
+#include <arm_neon.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -31,7 +32,22 @@
 #define hash1(x) (rotr32(x, 6) ^ rotr32(x, 11) ^ rotr32(x, 25))
 
 void sha256(const uint8_t* input, size_t input_len, uint8_t* output) {
-  uint32_t w[64];
+  register uint32x4_t q0;
+  register uint32x4_t q1;
+  register uint32x4_t q2;
+  register uint32x4_t q3;
+  register uint32x4_t q4;
+  register uint32x4_t q5;
+  register uint32x4_t q6;
+  register uint32x4_t q7;
+  register uint32x4_t q8;
+  register uint32x4_t q9;
+  register uint32x4_t q10;
+  register uint32x4_t q11;
+  register uint32x4_t q12;
+  register uint32x4_t q13;
+  register uint32x4_t q14;
+  register uint32x4_t q15;
 
   // reinterpret output bytes as 32-bit words
   uint32_t* H = (uint32_t*)output;
@@ -55,11 +71,8 @@ void sha256(const uint8_t* input, size_t input_len, uint8_t* output) {
 #ifdef DEBUG
     fprintf(stderr, "end of block %zu: %zu\n", block, (block + 1) * 64);
 #endif
-    for (int i = 0; i < 16; i++) {
-      register uint32_t v = ((uint32_t*)input)[(block * 16) + i];
-      asm("rev32 %[v], %[v]" : [v] "+r"(v));
-      w[i] = v;
-    }
+
+#include "_gen_block_read.c"
 
 #ifdef DEBUG
 // print message schedule
@@ -91,32 +104,17 @@ void sha256(const uint8_t* input, size_t input_len, uint8_t* output) {
     register uint32_t g = H[6];
     register uint32_t h = H[7];
 
-    register uint32_t t1 = 0;
-    register uint32_t t2 = 0;
-
-    register uint32_t w2;
-    register uint32_t w15;
     register uint32_t wi;
 
-#define EXPAND_ITER(i)                                    \
-  w2 = w[i - 2];                                          \
-  w15 = w[i - 15];                                        \
-  wi = expand1(w2) + w[i - 7] + expand0(w15) + w[i - 16]; \
-  w[i] = wi;
+    register uint32_t w2;
+    register uint32_t w7;
+    register uint32_t w15;
+    register uint32_t w16;
 
-#define HASH_ITER(k)                            \
-  t1 = h + hash1(e) + choose(e, f, g) + k + wi; \
-  t2 = hash0(a) + majority(a, b, c);            \
-  h = g;                                        \
-  g = f;                                        \
-  f = e;                                        \
-  e = d + t1;                                   \
-  d = c;                                        \
-  c = b;                                        \
-  b = a;                                        \
-  a = t1 + t2;
+    register uint32_t t1;
+    register uint32_t t2;
 
-#include "codegen.c"
+#include "_gen_hash_body.c"
 
     // update hash state
     H[0] += a;

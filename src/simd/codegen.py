@@ -18,10 +18,62 @@ kPrimes = [
   0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
 ]
 
-for i in range(64):
-  if (i >= 16):
-    print(f"EXPAND_ITER({i})")
-  else:
-    print(f"wi = w[{i}];") 
-  print(f"HASH_ITER({kPrimes[i]:#010x})")
+def get_neon_at(position, result_var):
+  q = position // 4
+  i = position % 4
+  return f'asm("mov %w0, %1.s[{i}]" : "=r"({result_var}) : "w"(q{q}));'
 
+def set_neon_at(position, value):
+  q = position // 4
+  i = position % 4
+  return f'asm("mov %0.s[{i}], %w1" ::"w"(q{q}), "r"({value}));'
+
+with open("_gen_block_read.c", "w") as f:
+  for i in range(16):
+    # print(f"BLOCK_READ_ITER({i}, w[{i}]);", file=f)
+    # q = f"w[{i}]"
+    print(f"""
+    {{
+      register uint32_t v = ((uint32_t*)input)[(block * 16) + {i}];
+      asm("rev32 %[v], %[v]" : [v] "+r"(v));
+      {set_neon_at(i, 'v')};
+    }}
+    """, file=f)
+
+with open("_gen_hash_body.c", "w") as f:
+  for i in range(64):
+    if (i >= 16):
+      print(f"""{{
+        asm(
+          "mov %w0, %4.s[{(i-2)%4}]\\n\\t"
+          "mov %w1, %5.s[{(i-7)%4}]\\n\\t"
+          "mov %w2, %6.s[{(i-15)%4}]\\n\\t"
+          "mov %w3, %7.s[{(i-16)%4}]\\n\\t"
+          : "=r"(w2),
+            "=r"(w7),
+            "=r"(w15),
+            "=r"(w16)
+          : "w"(q{(i-2)//4}),
+            "w"(q{(i-7)//4}),
+            "w"(q{(i-15)//4}),
+            "w"(q{(i-16)//4})
+        );
+        wi = expand1(w2) + w7 + expand0(w15) + w16;
+        {set_neon_at(i, 'wi')};
+        }}""", file=f)
+    else:
+      # print(f"wi = w[{i}];", file=f)
+      print(f"{get_neon_at(i, 'wi')};", file=f)
+    print(f"""{{
+      t1 = h + hash1(e) + choose(e, f, g) + {kPrimes[i]:#010x} + wi;
+      t2 = hash0(a) + majority(a, b, c);
+      h = g;
+      g = f;
+      f = e;
+      e = d + t1;
+      d = c;
+      c = b;
+      b = a;
+      a = t1 + t2;
+    }}""", file=f)
+    # print(f"HASH_ITER({kPrimes[i]:#010x});", file=f)
