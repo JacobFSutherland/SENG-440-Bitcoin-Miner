@@ -13,10 +13,12 @@ function nth_arg() {
 args=""
 for folder in $folders
 do
-    if [ -d $folder ]; then
+
+    # folder != "simd" || folder != "naive-o3"
+    if [ -d $folder ] && [ $folder != "simd" ] && [ $folder != "naive-o3" ]; then
         cd $folder
         make clean
-        make release
+        make release-opt
         cd ..
         args="$args '$folder/main 16 0000000000000000000000000000000000000000000000000000000000000001 10'"
     fi
