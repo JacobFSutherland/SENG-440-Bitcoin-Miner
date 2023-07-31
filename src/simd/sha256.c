@@ -4,10 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef DEBUG
-#include <stdio.h>
-#endif
-
 #define NONCE_LEN 4
 #define SHA256_HASH_LEN 32
 #define SHA256_BLOCK_LEN 64
@@ -61,38 +57,11 @@ void sha256(const uint8_t* input, size_t input_len, uint8_t* output) {
   H[7] = 0x5be0cd19;
 
   size_t block_count = CEILDIV(input_len, 64);
-#ifdef DEBUG
-  fprintf(stderr, "block_count: %zu\n", block_count);
-  fprintf(stderr, "input_len: %zu\n", input_len);
-#endif
 
   for (size_t block = 0; block < block_count; block++) {
     // copy block into message schedule (16 32-bit words)
-#ifdef DEBUG
-    fprintf(stderr, "end of block %zu: %zu\n", block, (block + 1) * 64);
-#endif
 
 #include "_gen_block_read.c"
-
-#ifdef DEBUG
-// print message schedule
-#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
-#define BYTE_TO_BINARY(byte)                                \
-  ((byte)&0x80 ? '1' : '0'), ((byte)&0x40 ? '1' : '0'),     \
-      ((byte)&0x20 ? '1' : '0'), ((byte)&0x10 ? '1' : '0'), \
-      ((byte)&0x08 ? '1' : '0'), ((byte)&0x04 ? '1' : '0'), \
-      ((byte)&0x02 ? '1' : '0'), ((byte)&0x01 ? '1' : '0')
-
-    for (int i = 0; i < 16; i++) {
-      for (int j = 0; j < 4; j++) {
-        fprintf(stderr, BYTE_TO_BINARY_PATTERN " ",
-                BYTE_TO_BINARY(w[i] >> (8 * (3 - j))));
-      }
-      fprintf(stderr, "\n");
-    }
-#undef BYTE_TO_BINARY
-#undef BYTE_TO_BINARY_PATTERN
-#endif
 
     // expand and hash message schedule
     register uint32_t a = H[0];

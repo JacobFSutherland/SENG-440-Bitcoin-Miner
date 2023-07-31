@@ -62,10 +62,6 @@ int main(int argc, char** argv) {
       currBlock.prev_hash[i / 2] |= x;
     }
   }
-#ifdef DEBUG
-  fprintf(stderr, "input='%s'\n", s);
-  fprintf(stderr, "len=%ld\n", strlen(s));
-#endif
 
   int iterations = atoi(argv[3]);
   int blocks = 0;

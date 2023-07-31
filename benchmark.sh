@@ -6,10 +6,6 @@ cd src
 
 folders=$(ls)
 
-function nth_arg() {
-    echo $1
-}
-
 args=""
 for folder in $folders
 do

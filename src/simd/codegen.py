@@ -30,8 +30,6 @@ def set_neon_at(position, value):
 
 with open("_gen_block_read.c", "w") as f:
   for i in range(16):
-    # print(f"BLOCK_READ_ITER({i}, w[{i}]);", file=f)
-    # q = f"w[{i}]"
     print(f"""
     {{
       register uint32_t v = ((uint32_t*)input)[(block * 16) + {i}];
@@ -62,7 +60,6 @@ with open("_gen_hash_body.c", "w") as f:
         {set_neon_at(i, 'wi')};
         }}""", file=f)
     else:
-      # print(f"wi = w[{i}];", file=f)
       print(f"{get_neon_at(i, 'wi')};", file=f)
     print(f"""{{
       t1 = h + hash1(e) + choose(e, f, g) + {kPrimes[i]:#010x} + wi;
@@ -76,4 +73,3 @@ with open("_gen_hash_body.c", "w") as f:
       b = a;
       a = t1 + t2;
     }}""", file=f)
-    # print(f"HASH_ITER({kPrimes[i]:#010x});", file=f)
